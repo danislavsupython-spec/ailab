@@ -86,7 +86,7 @@ def register():
         qr_filename = generate_qr_code(user.id, user.email, True)
 
         filename = secure_filename("main.py")
-        save_path = os.path.join(USER_FILES_PATH, f"/{user.id}" + filename)
+        save_path = os.path.join(USER_FILES_PATH, str(user.id), filename)
 
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         with open(save_path, "w") as f:

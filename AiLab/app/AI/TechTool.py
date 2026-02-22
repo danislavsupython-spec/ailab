@@ -17,7 +17,8 @@ from langchain_community.document_loaders import (
     UnstructuredMarkdownLoader,
     UnstructuredEmailLoader,
 )
-from langchain.chains.conversation.base import ConversationChain
+from langchain_classic.chains import LLMChain
+from langchain_core.prompts import PromptTemplate
 from diffusers import StableDiffusionXLPipeline
 from ollama import Client
 from PIL import Image
@@ -26,6 +27,7 @@ import io
 import torch
 from googlesearch import search
 from pydantic import BaseModel
+from pydantic.v1 import root_validator
 
 
 class CurrencyConverter:
@@ -98,22 +100,23 @@ class Code:
         else:
             file_ctx = ""
 
-        conversation = ConversationChain(llm=self.code_llm)
-        full_input = f"""
-        ### Инструкции:
-        Ты должен создать код по запросу пользователя.
-        Делай всё в малейших деталях.
+        prompt_template = PromptTemplate.from_template(
+            """### Инструкции:
+Ты должен создать код по запросу пользователя.
+Делай всё в малейших деталях.
 
-        ### Контекст:
-        - Код из файлов: {file_ctx}
-        - {file_text}
+### Контекст:
+- Код из файлов: {file_ctx}
+- {file_text}
 
-        ### Запрос пользователя:
-        {question}
+### Запрос пользователя:
+{question}
 
-        ### Ответ:
-        """
-        response = conversation.predict(input=full_input)
+### Ответ:
+"""
+        )
+        conversation = LLMChain(llm=self.code_llm, prompt=prompt_template)
+        response = conversation.predict(file_ctx=file_ctx, file_text=file_text, question=question)
         return f"Готовый код: {response}"
 
 

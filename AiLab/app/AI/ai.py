@@ -3,12 +3,12 @@ import os
 from datetime import datetime
 from langchain_core.prompts import PromptTemplate
 
-from langchain.memory import ConversationBufferMemory
+# from langchain_core.chat_message_histories import InMemoryChatMessageHistory
 from langchain_community.chat_message_histories import FileChatMessageHistory
 from langchain_ollama import OllamaLLM
 from app.AI.Tools import AITools
 from pathlib import Path
-from langchain.agents import create_react_agent, AgentExecutor
+from langchain_classic.agents import create_react_agent, AgentExecutor
 from typing import List
 from app.base.config import USER_FILES_PATH
 
@@ -20,15 +20,15 @@ class AI_BOT_V3:
         self.tools = AITools().get_all_tools()
         self.tools_name = AITools().get_all_tools_name()
 
-    def _load_storage(self, context_file: str) -> ConversationBufferMemory:
+    def _load_storage(self, context_file: str) -> FileChatMessageHistory:
         """
-        Загружает историю чата из файла и возвращает объект ConversationBufferMemory.
+        Загружает историю чата из файла и возвращает объект FileChatMessageHistory.
 
         Args:
             context_file (str): Путь к файлу с историей чата.
 
         Returns:
-            ConversationBufferMemory: Объект памяти с историей чата.
+            FileChatMessageHistory: Объект памяти с историей чата.
 
         Raises:
             Exception: Если произошла ошибка при загрузке файла.
@@ -42,25 +42,11 @@ class AI_BOT_V3:
             chat_memory = FileChatMessageHistory(file_path=str(context_path))
 
             # Создаем объект памяти
-            memory = ConversationBufferMemory(
-                chat_memory=chat_memory,
-                return_messages=True,  # Возвращать сообщения в формате списка
-                memory_key="history",  # Ключ для хранения истории
-                input_key="input",  # Ключ для входных данных
-                output_key="output",  # Ключ для выходных данных
-                max_messages=100,
-            )
-            return memory
+            return chat_memory
         except Exception as e:
             print(f"Ошибка при загрузке истории чата из {context_file}: {e}")
             # Возвращаем пустую память в случае ошибки
-            return ConversationBufferMemory(
-                chat_memory=FileChatMessageHistory(file_path=str(context_path)),
-                return_messages=True,
-                memory_key="history",
-                input_key="input",
-                output_key="output",
-            )
+            return chat_memory
 
     def _save_storage(
         self, context_file: str, human_message: str, ai_message: str = ""
