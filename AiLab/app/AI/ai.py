@@ -64,7 +64,7 @@ class AI_BOT_V3:
         """
         try:
             # Создаем директорию для файла, если она не существует
-            context_path = context_file
+            context_path = Path(context_file)
             context_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Инициализируем историю чата
@@ -171,13 +171,14 @@ class AI_BOT_V3:
     ) -> str:
         user_prompt = f"Вопрос: {prompt}, Используемые файлы: {str(file_context)}"
         result = {"output": ""}
+        print(user_prompt)
         try:
             # Load user and admin wishes
             admin_wishes = self._load_admin_wishes()
 
             # Initialize model
             model = OllamaLLM(
-                model="mistral:7b-instruct",
+                model="ministral-3:3b",
                 temperature=0.1,
                 tfs_z=0.95,  # Tail free sampling
                 typical_p=0.95,  # Typical sampling
@@ -205,9 +206,6 @@ class AI_BOT_V3:
                 - Write only on Russian language, or user language
                 """
                 + f"""
-                        ### Context:
-                        Admin Wishes: {admin_wishes}
-                        Available Files: {file_context}
                         """
                 + """
                         ### Response Format:
@@ -230,25 +228,28 @@ class AI_BOT_V3:
             # Create agent executor
             agent_executor = AgentExecutor(
                 agent=agent,
-                memory=history,
+                # memory=history,
                 tools=self.tools,
                 verbose=True,
                 handle_parsing_errors=True,  # Fixed typo: Fasle -> True
-                max_iterations=2,
-                max_execution_time=300,
+                max_iterations=20,
+                max_execution_time=3000,
                 tool_exception_handler=lambda e: f"Ошибка инструмента: {str(e)}",
-                memory_key="history",
+                # memory_key="history",
             )
 
             # Выполняем запрос агента
             result = agent_executor.invoke({"input": prompt})
         except Exception as e:
             print(str(e))
+            print(result["output"])
 
-        self._save_storage(
-            context_file=context_path,
-            human_message=user_prompt,
-            ai_message=result["output"],
-        )
+        # self._save_storage(
+        #     context_file=context_path,
+        #     human_message=user_prompt,
+        #     ai_message=result["output"],
+        # )
         del model
+        print(result["output"])
         return result["output"]
+
