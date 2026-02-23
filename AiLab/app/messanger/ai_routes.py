@@ -14,10 +14,9 @@ from flask_login import login_required
 from werkzeug.utils import secure_filename
 from app.AI import AI_BOT_V3
 from icecream import ic
-
+import logging
 bot = AI_BOT_V3()
-
-
+logger = logging.getLogger(__name__)
 @blueprint.route("/messenger/ai/contacts")
 @login_required
 def messenger_ai_contacts():
@@ -38,190 +37,102 @@ def messenger_ai_chat(ai_chat_id):
 
     return render_template("messenger_ai_chat.html", chat=ai_chat, messages=messages)
 
-
 @blueprint.route("/messenger/ai/send", methods=["POST"])
 @login_required
 def send_ai_message():
+    """Единый роут для текста + файлов."""
     try:
-        # 1) Текстовые сообщения в формате JSON
-        if request.content_type.startswith("application/json"):
+        # 1. Парсим входные данные
+        if request.is_json:
             data = request.get_json()
-            if not data:
-                return jsonify({"success": False, "error": "Invalid JSON data"}), 400
-
             ai_chat_id = data.get("ai_chat_id")
-            text = data.get("text", "").replace("\n", "<br>")
-
-            if not ai_chat_id or not text:
-                return jsonify(
-                    {"success": False, "error": "Missing ai_chat_id or text"}
-                ), 400
-
-            ai_chat = db.session.get(AIChat, ai_chat_id)
-            if not ai_chat or ai_chat.user_id != current_user.id:
-                return jsonify({"success": False, "error": "AI chat not found"}), 404
-
-            # Создаём сообщение пользователя
-            message = Message(
-                sender_id=current_user.id,
-                ai_chat_id=ai_chat_id,
-                text=text,
-                is_read=True,  # Сообщения в чате с ИИ считаются прочитанными
-            )
-            db.session.add(message)
-            db.session.commit()
-
-            # Заглушка: создаём ответное сообщение "Сообщение прочитано"
-            ai_response = _ai_response(text, ai_chat_id)
-            ai_message = Message(
-                ai_chat_id=ai_chat_id,
-                text=ai_response.replace("\n", "<br>"),
-                is_read=True,
-            )
-            db.session.add(ai_message)
-            db.session.commit()
-
-            # Формируем данные сообщения пользователя
-            message_data = {
-                "id": message.id,
-                "sender_id": message.sender_id,
-                "ai_chat_id": message.ai_chat_id,
-                "text": message.text,
-                "attachments": [],
-                "timestamp": message.timestamp.isoformat(),
-                "is_read": message.is_read,
-            }
-
-            # Отправляем сообщение пользователя через Socket.IO
-            socketio.emit("new_message", message_data, room=f"user_{current_user.id}")
-
-            # Отправляем ответное сообщение "Сообщение прочитано"
-            ai_message_data = {
-                "id": ai_message.id,
-                "sender_id": None,
-                "ai_chat_id": ai_message.ai_chat_id,
-                "text": ai_message.text,
-                "attachments": [],
-                "timestamp": ai_message.timestamp.isoformat(),
-                "is_read": ai_message.is_read,
-            }
-            socketio.emit(
-                "new_message", ai_message_data, room=f"user_{current_user.id}"
-            )
-
-            return jsonify({"success": True, "message": message_data})
-
-        # 2) Form-data с текстом и/или файлами
-        ai_chat_id = request.form.get("ai_chat_id", type=int)
-        text = request.form.get("text", "").replace("\n", "<br>")
-
-        if not ai_chat_id or (not text and "files" not in request.files):
-            return jsonify(
-                {"success": False, "error": "Missing ai_chat_id or content"}
-            ), 400
-
+            text = data.get("text", "").strip()
+        else:
+            ai_chat_id = request.form.get("ai_chat_id", type=int)
+            text = request.form.get("text", "").strip()
+        
+        if not ai_chat_id or not text:
+            return jsonify({"success": False, "error": "No chat or text"}), 400
+        
+        # 2. Проверяем чат
         ai_chat = db.session.get(AIChat, ai_chat_id)
         if not ai_chat or ai_chat.user_id != current_user.id:
-            return jsonify({"success": False, "error": "AI chat not found"}), 404
-
-        # Создаём сообщение пользователя
+            return jsonify({"success": False, "error": "Chat not found"}), 404
+        
+        # 3. Сообщение пользователя
         message = Message(
             sender_id=current_user.id,
             ai_chat_id=ai_chat_id,
-            text=text or None,
-            is_read=True,
+            text=text,
+            is_read=True
         )
         db.session.add(message)
-        db.session.flush()  # Чтобы получить message.id для вложений
-
-        # Обрабатываем вложения
-        files = request.files.getlist("files")
-        allowed_ext = {
-            "png",
-            "jpg",
-            "jpeg",
-            "gif",
-            "mp4",
-            "mov",
-            "pdf",
-            "doc",
-            "docx",
-            "cpp",
-            "py",
-            "html",
-            "js",
-        }
+        db.session.flush()
+        
+        # 4. Файлы
         attachments_data = []
-
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-        for f in files:
-            if f and f.filename:
-                ext = f.filename.rsplit(".", 1)[-1].lower()
-                if ext not in allowed_ext:
-                    continue
-                filename = secure_filename(f"{message.id}_{f.filename}")
-                save_path = os.path.join(UPLOAD_FOLDER, filename)
-                ic(UPLOAD_FOLDER)
-                f.save(save_path)
-                # file_url = url_for(
-                #     "static", filename=f"uploads/{filename}", _external=True
-                # )
-                file_url = save_path
-                attach = Attachment(
-                    message_id=message.id, url=file_url, mime_type=f.mimetype
-                )
-                db.session.add(attach)
-                attachments_data.append({"url": file_url, "mime_type": f.mimetype})
-
+        files = request.files.getlist("files") if not request.is_json else []
+        if files:
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            allowed_ext = {"png", "jpg", "pdf", "py", "cpp", "txt"}
+            
+            for f in files:
+                if f and f.filename:
+                    ext = f.filename.rsplit(".", 1)[-1].lower()
+                    if ext in allowed_ext:
+                        filename = secure_filename(f"{message.id}_{f.filename}")
+                        save_path = os.path.join(UPLOAD_FOLDER, filename)
+                        f.save(save_path)
+                        
+                        attach = Attachment(
+                            message_id=message.id,
+                            url=save_path,
+                            mime_type=f.mimetype
+                        )
+                        db.session.add(attach)
+                        attachments_data.append({"url": save_path, "mime_type": f.mimetype})
+        
+        # 5. ✅ AI ОТВЕТ через bot.ask()
+        files_context = [f["url"] for f in attachments_data]
+        ai_response = bot.ask(
+            prompt=text,
+            context_path=ai_chat.context,
+            userid=str(current_user.id),
+            file_context=files_context
+        )
+        
+        # 6. Сохраняем ответ ИИ
+        ai_message = Message(
+            ai_chat_id=ai_chat_id,
+            text=ai_response,
+            is_read=True
+        )
+        db.session.add(ai_message)
         db.session.commit()
-
-        # Заглушка: создаём ответное сообщение "Сообщение прочитано", если есть текст
-        if text:
-            ai_response = _ai_response(text, ai_chat_id, attachments_data)
-            ai_message = Message(
-                ai_chat_id=ai_chat_id,
-                text=ai_response.replace("\n", "<br>"),
-                is_read=True,
-            )
-            db.session.add(ai_message)
-            db.session.commit()
-
-        # Формируем данные сообщения пользователя
+        
+        # 7. Socket.IO
         message_data = {
-            "id": message.id,
-            "sender_id": message.sender_id,
-            "ai_chat_id": message.ai_chat_id,
-            "text": message.text,
+            "id": message.id, "sender_id": message.sender_id,
+            "ai_chat_id": message.ai_chat_id, "text": message.text,
             "attachments": attachments_data,
-            "timestamp": message.timestamp.isoformat(),
-            "is_read": message.is_read,
+            "timestamp": message.timestamp.isoformat(), "is_read": True
         }
-
-        # Отправляем сообщение пользователя через Socket.IO
+        ai_message_data = {
+            "id": ai_message.id, "sender_id": None,
+            "ai_chat_id": ai_message.ai_chat_id, "text": ai_message.text,
+            "attachments": [], "timestamp": ai_message.timestamp.isoformat(),
+            "is_read": True
+        }
+        
         socketio.emit("new_message", message_data, room=f"user_{current_user.id}")
-
-        # Если есть текст и ответ "Сообщение прочитано", отправляем его
-        if text:
-            ai_message_data = {
-                "id": ai_message.id,
-                "sender_id": None,
-                "ai_chat_id": ai_message.ai_chat_id,
-                "text": ai_message.text,
-                "attachments": [],
-                "timestamp": ai_message.timestamp.isoformat(),
-                "is_read": ai_message.is_read,
-            }
-            socketio.emit(
-                "new_message", ai_message_data, room=f"user_{current_user.id}"
-            )
-
+        socketio.emit("new_message", ai_message_data, room=f"user_{current_user.id}")
+        
         return jsonify({"success": True, "message": message_data})
-
-    except Exception:
+        
+    except Exception as e:
+        logger.error(f"AI Send error: {e}")
         db.session.rollback()
-        return jsonify({"success": False, "error": "Internal server error"}), 500
-
+        return jsonify({"success": False, "error": "Server error"}), 500
 
 @blueprint.route("/messenger/ai/mark_as_read/<int:ai_chat_id>", methods=["POST"])
 @login_required
@@ -284,36 +195,6 @@ def create_ai_chat():
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
-
-
-def _ai_response(text, ai_chat_id, attachments_data):
-    try:
-        # Получаем чат ИИ
-        ai_chat = AIChat.query.filter_by(
-            id=ai_chat_id, user_id=current_user.id
-        ).first_or_404()
-
-        files = []
-        for file in attachments_data:
-            files.append(file["url"])
-
-        ic(files)
-
-        context_path = ai_chat.context
-
-        current_user_id = str(current_user.id)
-
-        ai_response = bot.ask(
-            prompt=text,
-            context_path=context_path,
-            userid=current_user_id,
-            file_context=files,
-        )
-
-        return ai_response
-    except Exception as e:
-        print(str(e))
-
 
 def get_started_context(ai_chat_id):
     file_path = os.path.join(
