@@ -580,40 +580,47 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (!text && files.length === 0) return;
 
-            // 1. Показываем сообщение юзера
+            // 1. Сразу отображаем сообщение пользователя
             if (text) {
                 const messageElement = document.createElement('div');
-                messageElement.className = 'message message-sent';
+                const now = new Date();
+                const timeOnly = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+                messageElement.classList.add('message', 'message-sent');
                 messageElement.innerHTML = `
-            <div class="message-content">${text}</div>
-            <span class="message-time" data-timestamp="${new Date().toISOString()}"></span>
-        `;
+                    <div class="message-text">${text.replace(/\n/g, '<br>')}</div>
+                    <div class="message-second-data">
+                        <div class="message-time" data-timestamp="${timeOnly}">${timeOnly}</div>
+                    </div>
+                `;
                 messagesContainer.appendChild(messageElement);
-                formatMessageTimes();
+                formatMessageTimes(); // Форматируем время
                 scrollToBottom();
             }
 
-            // 2. "ИИ печатает..." 
+            // 2. Отображаем индикатор "ИИ думает"
             const thinkingElement = document.createElement('div');
-            thinkingElement.id = 'ai-thinking';
-            thinkingElement.className = 'message message-incoming thinking';
-            thinkingElement.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+            thinkingElement.classList.add('message', 'message-incoming', 'thinking');
+            thinkingElement.innerHTML = `
+                <div class="message-content">
+                    <div class="message-text">ИИ думает...</div>
+                    <div class="message-time" data-timestamp="${new Date().toISOString()}"></div>
+                </div>
+            `;
             messagesContainer.appendChild(thinkingElement);
             scrollToBottom();
 
-            // 3. Очистка
+            // 3. Очищаем поля ввода
             input.value = '';
-            input.style.height = 'auto';
-            fileInput.value = '';
+            input.style.height = 'auto'; // Сбрасываем высоту текстового поля
+            fileInput.value = ''; // Сбрасываем файлы
             const newFileInput = document.createElement('input');
-            newFileInput.type = 'file'; newFileInput.id = 'file-input';
-            newFileInput.multiple = true; newFileInput.accept = 'image/*,video/*,.pdf,.doc,.docx,.js,.html,.py,.cpp';
+            newFileInput.type = 'file';
+            newFileInput.id = 'file-input';
+            newFileInput.multiple = true;
+            newFileInput.accept = 'image/*,video/*,.pdf,.doc,.docx,.js,.html,.py,.cpp';
             fileInput.parentNode.replaceChild(newFileInput, fileInput);
 
-            // 4. Запрос с ЛОНГИМ ТАЙМАУТОМ
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 120000); // 2 минуты
-
+            // 4. Отправляем запрос на сервер
             const form = new FormData();
             form.append('ai_chat_id', aiChatId);
             if (text) form.append('text', text);
@@ -622,53 +629,42 @@ document.addEventListener('DOMContentLoaded', function () {
             fetch('/messenger/ai/send', {
                 method: 'POST',
                 headers: { 'X-CSRFToken': getCookie('csrf_token') },
-                body: form,
-                signal: controller.signal
+                body: form
             })
-                .then(res => {
-                    clearTimeout(timeout);
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    return res.json();
-                })
+                .then(res => res.json())
                 .then(data => {
-                    thinkingElement.remove();
                     if (data.success) {
-                        // ✅ 1. Немедленно перезагружаем (BYPASS socket)
+                        // Удаляем индикатор "ИИ думает"
+                        thinkingElement.remove();
+                        // Перезагружаем чат для отображения ответа ИИ
                         loadAIChat(aiChatId);
-
-                        // ✅ 2. Socket обновит если нужно
-                        setTimeout(() => checkNewMessages(), 100);
                     } else {
-                        showError('❌ ' + (data.error || 'Ошибка сервера'));
+                        // Удаляем индикатор и показываем ошибку
+                        thinkingElement.remove();
+                        alert(data.error || 'Ошибка отправки');
                     }
                 })
-                .catch(err => {
-                    clearTimeout(timeout);
+                .catch(error => {
+                    console.error('Ошибка отправки сообщения:', error);
                     thinkingElement.remove();
-                    console.error('AI Error:', err);
-                    if (err.name !== 'AbortError') {
-                        showError('⏰ AI думает долго... Подождите или повторите');
-                    }
+                    alert('Не удалось отправить сообщение');
                 });
-
-            input.focus();
-            // Инициализация
-            setupSocketListeners();
-            checkNewMessages();
-            setInterval(checkNewMessages, 30000);
         }
 
+        sendButton.addEventListener('click', sendAIMessage);
+        input.focus();
 
-
-        function showError(text) {
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'message message-incoming error';
-            errorDiv.textContent = text;
-            document.getElementById('messages-container').appendChild(errorDiv);
-            scrollToBottom();
+        const backButton = document.querySelector('.back-button');
+        if (backButton) {
+            backButton.addEventListener('click', loadAIContacts);
         }
+    }
 
-    });
+    // Инициализация
+    setupSocketListeners();
+    checkNewMessages();
+    setInterval(checkNewMessages, 30000);
+});
 
 
 
