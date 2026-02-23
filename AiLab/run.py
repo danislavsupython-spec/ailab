@@ -17,5 +17,4 @@ if __name__ == "__main__":
         debug=True,
         allow_unsafe_werkzeug=True,
         use_reloader=False,      # ← ДОБАВЬ
-        allow_unsafe_werkzeug=True
     )

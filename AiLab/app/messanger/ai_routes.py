@@ -196,6 +196,38 @@ def create_ai_chat():
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
 
+@blueprint.route("/ai/send", methods=["POST"])
+def ai_send():
+    ai_chat_id = request.form.get('ai_chat_id')
+    text = request.form.get('text', '')
+    
+    # ✅ ГЕНЕРИРУЕМ ОТВЕТ AI
+    ai_response = AI_BOT_V3.generate_response(text, ai_chat_id)
+    
+    # ✅ СОХРАНЯЕМ СООБЩЕНИЕ С sender_id = current_user.id
+    message_data = {
+        'sender_id': current_user.id,  # ← ФИКС!
+        'ai_chat_id': ai_chat_id,
+        'text': ai_response,
+        'attachments': []
+    }
+    
+    # Сохраняем в БД
+    message_id = save_ai_message(message_data)
+    
+    # ✅ SocketIO EMIT С ПРАВИЛЬНЫМИ ДАННЫМИ
+    socketio.emit('new_message', {
+        'id': message_id,
+        'sender_id': current_user.id,  # ← ФИКС!
+        'ai_chat_id': ai_chat_id,
+        'text': ai_response,
+        'attachments': [],
+        'timestamp': datetime.utcnow().isoformat(),
+        'is_read': True
+    }, room=f'user_{current_user.id}')
+    
+    return jsonify({'success': True})
+
 def get_started_context(ai_chat_id):
     file_path = os.path.join(
         USER_FILES_PATH,

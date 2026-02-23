@@ -633,7 +633,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(data => {
                     thinkingElement.remove();
                     if (data.success) {
-                        loadAIChat(aiChatId); // ✅ Перезагрузка чата
+                        // ✅ 1. Немедленно перезагружаем (BYPASS socket)
+                        loadAIChat(aiChatId);
+
+                        // ✅ 2. Socket обновит если нужно
+                        setTimeout(() => checkNewMessages(), 100);
                     } else {
                         showError('❌ ' + (data.error || 'Ошибка сервера'));
                     }

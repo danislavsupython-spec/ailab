@@ -709,4 +709,5 @@ def get_tpu_schedule(group_id: str) -> str:
         html += "</table></div>"
     
     html += "</div>"
+    print(html)
     return html
