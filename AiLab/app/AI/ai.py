@@ -235,11 +235,12 @@ class AI_BOT_V3:
         prompt: str, 
         context_path: str, 
         userid: str, 
-        file_context: List[str] | None = None
+        file_context: List[str] | None = None,
+        university: str = "",
+        group: str = ""
     ) -> str:
-        """
-        Универсальный метод обработки запросов с приоритетами:
-        1. Расписание ТПУ → 2. Сохранение группы → 3. AI ответ
+        """Универсальный метод обработки запросов с приоритетами:
+        1. Расписание ТПУ/ЛТПУ → 2. Сохранение группы → 3. AI ответ
         
         Parameters
         ----------
@@ -251,6 +252,10 @@ class AI_BOT_V3:
             Telegram/веб ID пользователя
         file_context : List[str], optional
             Список прикрепленных файлов
+        university : str, optional
+            Университет пользователя ("ТПУ", "ЛТПУ")
+        group : str, optional
+            Группа пользователя
         
         Returns
         -------
@@ -271,7 +276,7 @@ class AI_BOT_V3:
             return "❓ Пожалуйста, напишите вопрос."
         
         # 2. ПРОВЕРКА РАСПИСАНИЯ (ПРИОРИТЕТ №1)
-        schedule_response = self._handle_schedule_request(prompt, userid)
+        schedule_response = self._handle_schedule_request(prompt, userid, university, group)
         if schedule_response:
             logger.info(f"✅ Расписание для {userid}: {schedule_response[:50]}")
             return schedule_response
@@ -348,8 +353,8 @@ class AI_BOT_V3:
         
         return None
 
-    def _handle_schedule_request(self, prompt: str, userid: str) -> str | None:
-        """Расписание ТПУ - ПОЛНАЯ НЕДЕЛЯ."""
+    def _handle_schedule_request(self, prompt: str, userid: str, university: str = "", group: str = "") -> str | None:
+        """Расписание ТПУ/ЛТПУ - ПОЛНАЯ НЕДЕЛЯ."""
         schedule_keywords = {
             'расписание', 'расп', 'уроки', 'пары', 'schedule', 'завтра', 'сегодня'
         }
@@ -357,21 +362,32 @@ class AI_BOT_V3:
         if not any(kw in prompt.lower() for kw in schedule_keywords):
             return None
         
-        group_id = self.user_groups.get(userid)
-        if not group_id:
-            return (
-                "📚 <b>Укажите группу!</b>\n\n"
-                "💡 <code>моя группа 415</code>\n"
-                "📋 Группы: 415,425,435,445,455,314,324,334,344,354"
-            )
+        if university == "" or group == "":
+            return "❓ Для получения расписания укажите ваш университет и группу."
         
-        # ✅ ВЫВОДИМ ПОЛНОЕ РАСПИСАНИЕ НА НЕДЕЛЮ
-        try:
-            schedule_html = get_tpu_schedule(group_id)
-            return f"📅 <b>Полное расписание {group_id}</b>\n\n{schedule_html}"
-        except Exception as e:
-            logger.error(f"Ошибка расписания {group_id}: {e}")
-            return f"❌ Ошибка загрузки <b>{group_id}</b>"
+        if university == "ЛТПУ":
+            try:
+                schedule_html = get_ltpu_schedule(group)  # Функция для ЛТПУ
+                return f"📅 <b>Полное расписание {group}</b>\n\n{schedule_html}"
+            except Exception as e:
+                logger.error(f"Ошибка расписания ЛТПУ {group}: {e}")
+                return f"❌ Ошибка загрузки <b>{group}</b>"
+        elif university == "ТПУ":
+            group_id = self.user_groups.get(userid)
+            if not group_id:
+                return (
+                    "📚 <b>Укажите группу!</b>\n\n"
+                    "💡 <code>моя группа 415</code>\n"
+                    "📋 Группы: 415,425,435,445,455,314,324,334,344,354"
+                )
+            try:
+                schedule_html = get_tpu_schedule(group_id)
+                return f"📅 <b>Полное расписание {group_id}</b>\n\n{schedule_html}"
+            except Exception as e:
+                logger.error(f"Ошибка расписания ТПУ {group_id}: {e}")
+                return f"❌ Ошибка загрузки <b>{group_id}</b>"
+        else:
+            return "❓ Неизвестный университет. Укажите 'ТПУ' или 'ЛТПУ'."
     
     def set_user_group(self, userid: str, group_name: str) -> None:
         """Сохраняет группу пользователя."""
@@ -509,7 +525,7 @@ def get_tpu_schedule(group_id: str) -> str:
     group_id = group_id.upper().strip()
     
     # Читаем data/rasp.json
-    json_path = Path('data/rasp.json')
+    json_path = Path('C:/Users/DepVeResonCE/Documents/IPPROJECT/ailab/AiLab/data/rasp.json')
     if not json_path.exists():
         return "❌ <b>data/rasp.json</b> не найден"
     
