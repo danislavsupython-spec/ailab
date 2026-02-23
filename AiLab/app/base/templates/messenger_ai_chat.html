@@ -1,3 +1,85 @@
+<header>
+    <style>
+        /* 📊 СОВМЕСТИМЫЕ С split('. ', 1) */
+        .schedule-container {
+            max-width: 100%;
+            margin: 10px 0;
+        }
+
+        .schedule-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px;
+            border-radius: 12px 12px 0 0;
+            text-align: center;
+            font-weight: 600;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .schedule-day {
+            margin-bottom: 20px;
+            border-radius: 0 0 12px 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .schedule-day h3 {
+            background: #f8f9ff;
+            margin: 0;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #2c3e50;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        .schedule-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f3f4;
+            vertical-align: top;
+        }
+
+        .lesson-time {
+            width: 50px;
+            font-weight: 700;
+            color: #495057;
+            background: #f8f9fa;
+            text-align: center;
+            font-size: 14px;
+            border-right: 2px solid #e9ecef;
+        }
+
+        .lesson-content {
+            color: #2c3e50;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+
+        .lesson-content strong {
+            color: #2563eb;
+        }
+
+        @media (max-width: 480px) {
+            .schedule-table td {
+                padding: 12px 10px;
+                font-size: 13px;
+            }
+
+            .lesson-time {
+                width: 40px;
+                font-size: 13px;
+            }
+        }
+    </style>
+
+</header>
+
 <div class="chat-container">
     <div class="chat-header" data-ai-chat-id="{{ chat.id }}">
         <button class="back-button">←</button>

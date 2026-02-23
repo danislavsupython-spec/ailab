@@ -5,12 +5,8 @@ import json
 import logging
 import ollama
 from langchain_ollama import ChatOllama
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.messages import HumanMessage, AIMessage
 from langchain_community.chat_message_histories import FileChatMessageHistory
 from app.base.config import USER_FILES_PATH
-# from app.AI.tool.time_school import TpuScheduleParser
-from app.AI.tool.odt_schedule import OdtScheduleParser
 import re
 
 logger = logging.getLogger(__name__)
@@ -508,178 +504,26 @@ class AI_BOT_V3:
     def add_admin_wish(self, wish_message: str) -> None:
         """Добавляет глобальное пожелание."""
         self.wish_manager.add_admin_wish(wish_message)
-
 def get_tpu_schedule(group_id: str) -> str:
     """✅ ПОЛНЫЕ расписания всех групп ТПУ (415-455)."""
     group_id = group_id.upper().strip()
     
-    # 🎯 ВСЕ ГРУППЫ ИЗ ТВОИХ СКРИНОВ + ODT
-    SCHEDULES = {
-        "415": {
-            "Понедельник": [
-                "1. Разговоры о важном | 317",
-                "2. Индивидуальный проект | 317", 
-                "3. Литература | 304",
-                "4. Литература | 304",
-                "5. Алгебра | 317",
-                "6. Геометрия | 317"
-            ],
-            "Вторник": [
-                "1. Геометрия | 317",
-                "2. Геометрия | 317",
-                "3. Алгебра | 317",
-                "4. Алгебра | 317",
-                "5. Англ.яз | 316",
-                "6. Англ.яз | 316",
-                "7. История | 317",
-                "8. История | 317"
-            ],
-            "Среда": [
-                "1. Физика | 315",
-                "2. Физика | 315",
-                "3. Информ. | 314",
-                "4. Информ. | 314",
-                "5. Русский | 304",
-                "6. Русский | 304"
-            ],
-            "Четверг": [
-                "1. Алгебра | 317",
-                "2. Алгебра | 317",
-                "3. Информ. | 310",
-                "4. Информ. | 310",
-                "5. Физика | 315",
-                "6. Физика(вн) | 315",
-                "7. Россия-мои горизонты | 317"
-            ],
-            "Пятница": [
-                "1. Физика | 315",
-                "2. Физика | 315",
-                "3. Биология | 302",
-                "4. География | 317",
-                "5. Химия | 315",
-                "6. Вероятность | 317"
-            ],
-            "Суббота": [
-                "1. Англ.яз | 316",
-                "2. Литература | 304",
-                "3. Обществознание | 301(16а)",
-                "4. Обществознание | 301(16а)",
-                "5. Физ.культура | 318",
-                "6. Физ.культура | 318"
-            ]
-        },
-        "425": {
-            "Понедельник": [
-                "1. Разговоры о важном | 301",
-                "2. Физика | 301",
-                "3. Физика | 301",
-                "4. Алгебра | 320",
-                "5. Геометрия | 320",
-                "6. Англ.яз | 316"
-            ],
-            "Вторник": [
-                "1. Литература | 304",
-                "2. Литература | 304",
-                "3. Информ. | 314",
-                "4. Информ. | 314",
-                "5. Англ.яз | 309",
-                "6. Англ.яз | 309",
-                "7. Вероятность | 315",
-                "8. ОБЗР | 304"
-            ],
-            "Среда": [
-                "1. Физ.культура | 318",
-                "2. Физ.культура | 318",
-                "3. Русский | 304",
-                "4. Русский | 304",
-                "5. Литература | 308",
-                "6. Биология | 320"
-            ],
-            "Четверг": [
-                "1. Физика | 301",
-                "2. Физика | 301",
-                "3. Информ. | 314",
-                "4. Информ. | 314",
-                "5. Алгебра | 320",
-                "6. Алгебра | 320",
-                "7. Россия-мои горизонты | 301"
-            ],
-            "Пятница": [
-                "1. Физика | 301",
-                "2. Физика | 301",
-                "3. Индивидуальный проект | 301",
-                "4. География | 317",
-                "5. Геометрия | 302",
-                "6. Геометрия | 302"
-            ],
-            "Суббота": [
-                "1. Литература | 304",
-                "2. География | 301",
-                "3. Физика | 301",
-                "4. Физика(вн) | 301",
-                "5. Алгебра | 317",
-                "6. Алгебра | 317"
-            ]
-        },
-        "435": {
-            "Понедельник": [
-                "1. Разговоры о важном | 320",
-                "2. Алгебра | 320",
-                "3. Химия | 318",
-                "4. Англ.яз | 316",
-                "5. Физика | 301"
-            ],
-            "Вторник": [
-                "1. Алгебра | 320",
-                "2. Алгебра | 320",
-                "3. История | 301",
-                "4. История | 301",
-                "5. Геометрия | 320"
-            ],
-            "Среда": [
-                "1. Физика | 215(20)",
-                "2. Физика | 215(20)",
-                "3. Химия | 219(20)",
-                "4. Химия | 219(20)"
-            ]
-        },
-        "445": {
-            "Понедельник": [
-                "1. Разговоры о важном | 308",
-                "2. Литература | 308",
-                "3. Алгебра | 313",
-                "4. Алгебра | 313"
-            ],
-            "Вторник": [
-                "1. Литература | 308",
-                "2. Литература | 308",
-                "3. Информ. | 309",
-                "4. Информ. | 309"
-            ],
-            "Среда": [
-                "1. Биология | 320",
-                "2. Вероятность | 308",
-                "3. Физ.культура | 316"
-            ]
-        },
-        "455": {
-            "Понедельник": [
-                "1. Разговоры о важном | 304",
-                "2. Литература | 304",
-                "3. Алгебра | 320"
-            ],
-            "Вторник": [
-                "1. Англ.яз | 316",
-                "2. Информ. | 314",
-                "3. Алгебра | 320"
-            ]
-        }
-    }
+    # Читаем data/rasp.json
+    json_path = Path('data/rasp.json')
+    if not json_path.exists():
+        return "❌ <b>data/rasp.json</b> не найден"
     
-    if group_id not in SCHEDULES:
+    try:
+        with json_path.open('r', encoding='utf-8') as f:
+            schedules = json.load(f)
+    except:
+        return "❌ Ошибка чтения data/rasp.json"
+    
+    if group_id not in schedules:
+        groups = sorted([g for g in schedules.keys() if isinstance(g, str)])
         return f"""
-        ❌ <b>Группа {group_id} не найдена!</b><br>
-        💡 <code>415, 425, 435, 445, 455</code>
+        ❌ <b>Группа {group_id}</b> не найдена!<br>
+        💡 Доступно: <code>{', '.join(groups[:5])}</code>
         """
     
     # ✅ КРАСИВАЯ HTML ТАБЛИЦА
@@ -690,7 +534,7 @@ def get_tpu_schedule(group_id: str) -> str:
         </div>
     """
     
-    for day, lessons in SCHEDULES[group_id].items():
+    for day, lessons in schedules[group_id].items():
         html += f"""
         <div class="schedule-day">
             <h3>🗓️ {day}</h3>
@@ -698,16 +542,35 @@ def get_tpu_schedule(group_id: str) -> str:
         """
         
         for lesson in lessons:
-            num, content = lesson.split('. ', 1)
-            html += f"""
+            lesson = lesson.strip()
+            if not lesson or lesson in ["", "-", "—"]:
+                # ПУСТАЯ ячейка
+                html += """
                 <tr>
-                    <td class="lesson-time">{num}</td>
-                    <td class="lesson-content">{content}</td>
+                    <td class="lesson-time">—</td>
+                    <td class="lesson-content">Окно</td>
                 </tr>
-            """
+                """
+            else:
+                try:
+                    # ✅ ТВОЙ парсинг: "1. Предмет | кабинет"
+                    num, content = lesson.split('. ', 1)
+                    html += f"""
+                    <tr>
+                        <td class="lesson-time">{num}</td>
+                        <td class="lesson-content">{content}</td>
+                    </tr>
+                    """
+                except ValueError:
+                    # Без номера
+                    html += f"""
+                    <tr>
+                        <td class="lesson-time">—</td>
+                        <td class="lesson-content">{lesson}</td>
+                    </tr>
+                    """
         
         html += "</table></div>"
     
     html += "</div>"
-    print(html)
     return html
