@@ -1,118 +1,69 @@
 {% extends "base.html" %}
 
-{% block title %}AiLab Web Ide{% endblock %}
+{% block title %}AI Д-АИ Ассистент для ТПУ{% endblock %}
 
 {% block styles %}
-<!-- CodeMirror Основной стиль -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
-<!-- Стили для автодополнения -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
-
 <link rel="stylesheet" href="{{ url_for('static', filename='css/ide.css') }}">
+<style>
+  .welcome-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 80vh;
+    text-align: center;
+    font-family: 'Arial', sans-serif;
+    color: #333;
+  }
+  .welcome-container h1 {
+    font-size: 2.5em;
+    margin-bottom: 20px;
+    color: rgb(40, 190, 70);
+  }
+  .welcome-container p {
+    font-size: 1.2em;
+    margin-bottom: 10px;
+  }
+  .welcome-container {
+    position: relative;
+    margin-top: 30px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    width: 98%;
+    height: 60%;
+    max-width: 2000px;
+    font-style: normal;
+    color: #555;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+</style>
 {% endblock %}
 
 {% block content %}
-    <div class="container main-el">
-        <div class="part2-el">
-            <div class="tabs"></div>
-            
-            <div class="toolbar" style="height: 5vh;">
-
-                <div class="toolbar-left">
-                    <button class="toolbarpart1 run-button" onclick="executeCode()"><i><img class="button-icons" src="{{ url_for('static', filename='img/play443.svg') }}"></i></button>
-                    <button id="save-button" class="toolbarpart1"><i><img class="button-icons" src="{{ url_for('static', filename='img/save.svg') }}"></i></button>
-                    <button class="toolbarpart1 delete-button" id="stopExecute" ><i><img class="button-icons" src="{{ url_for('static', filename='img/del-console.svg') }}"></i></button>
-                </div>
-    
-                <button align="center" class="opt-ver-menu-triger">Настройки</button>
-    
-                <div class="toolbar-right">
-                    <button class="toolbarpart2 delete-button" onclick="clearConsole()"><i><img class="button-icons" src="{{ url_for('static', filename='img/del-console.svg') }}"></i></button>
-                    <button class="toolbarpart2 console-close-button"><i><img class="button-icons" src="{{ url_for('static', filename='img/console.svg') }}"></i></button>
-                    <button class="toolbarpart2 download-button" onclick="saveConsoleToFile()"><i><img class="button-icons" src="{{ url_for('static', filename='img/save-console-as-text.svg') }}"></i></button>
-                    <button class="toolbarpart2 text-button" onclick="copyToClipboard()"><i><img class="button-icons" src="{{ url_for('static', filename='img/play.svg') }}"></i></button>
-                </div>
-                
-            </div>
-        
-            <div class="console resizable">
-                <div class="console-label ">Консоль</div>
-                <textarea class="console-output" readonly></textarea>
-                <textarea class="console-input" id="consoleInput" placeholder="" readonly></textarea>
-            </div>
-        </div>
-        
+  <div class="container main-el">
+    <div class="part2-el">
+      <div class="welcome-container">
+        <h1>Добро пожаловать в АИД Ассистент для ТПУ!</h1>
+        <p>Ваш персональный помощник в обучении и развитии.</p>
+        <p>Здесь вы можете общаться с друзьями, управлять профилем и использовать AI-инструменты.</p>
+        <p>
+          <a href="https://tpu.ru/" target="_blank">Официальный сайт ТПУ</a>
+        </p>
+      </div>
     </div>
-
-<div class="opt-ver-menu" hidden>
-    <div class="pos-opt-ver">
-        <button class="opt-ver-menu-triger-reverse"><i><img class="button-iconsdd" src="{{ url_for('static', filename='img/close.svg') }}"></i></button>
-        <div class="lang-ver-menu">
-            <div class="lang-ver-menu-item">
-                
-                <div class="settings-container">
-                    <div>
-                        <div class="names-settings">
-                            <div class="languages-container">
-                                <select class="languages">
-                                    <option value="python" >Python</option>
-                                </select>
-                            </div>
-                            <div class="version-container">
-                                <select class="version-download">
-                                        <option value="3.6">3.6</option>
-                                        <option value="3.9">3.9</option>
-                                        <option value="3.12">3.12</option>
-                                    </h3>
-                                </select>
-                            </div>
-                            
-                        </div>
-
-                        <div class="settings-options">
-                            <h3></h3>
-                            
-
-                        </div>
-                    </div>
-                    <div class="settings-sets">
-                        <div class="title-sets">Наборы
-                            <div class="title-but"><button class="add-set" onclick="addSet()">+</button ><button class="remove-set" onclick="deleteSelectedSet()">-</button></div>
-                        </div>
-                        <div class="sets" id="sets-list">
-                            
-                                <div class="set active" onclick="selectSet(this)" id="1" ondblclick="editSetName(this)"><span>set1</span></div>
-                                
-                        </div>
-                        
-                    </div>
-                </div>
-                
-                </div>
-            </div>
+  </div></p>
+        <div class="note-box">
+          <p></p>
         </div>
+      </div>
     </div>
-</div>
-
+  </div>
 {% endblock %}
 
 {% block scripts %}
-<!-- Основной CodeMirror -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
-
-<!-- Дополнения для CodeMirror -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script> <!-- Автозакрытие скобок -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script> <!-- Автодополнение -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/anyword-hint.min.js"></script> <!-- Слова из текста -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script> <!-- Комментирование Ctrl+/ -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script> <!-- Подсветка скобок -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script> <!-- Закрытие скобок -->
-
-<!-- Подключаем Socket.IO -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
-
-<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  <script>
+    console.log("Добро пожаловать в AI Д-АИ Ассистент.");
+  </script>
 {% endblock %}
-
