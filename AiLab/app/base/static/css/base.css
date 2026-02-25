@@ -49,6 +49,10 @@ body.dark-mode .header {
 .header-title {
     font-size: 34px;
     margin-left: 1rem;
+    font-family: 'Arial Black', sans-serif;
+    font-size: 40px;
+    color: #ffffff;
+    letter-spacing: 2px;
 }
 
 

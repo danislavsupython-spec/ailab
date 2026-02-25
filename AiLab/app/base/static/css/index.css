@@ -44,7 +44,7 @@ a{
     height: 92.1vh;/* Квадратные пропорции для пионеров дизайна */
     min-height: 800px; 
     padding-top: 100px;
-    background: linear-gradient(0deg, rgba(40, 190, 70, 0.4), rgba(40, 190, 70, 0.4)); 
+    background: linear-gradient(0deg, rgba(40, 190, 70, 0.4), rgba(40, 190, 70, 0.4));
 }
 .nav-link {
     color: #black;
@@ -70,7 +70,7 @@ a{
 }
 
 .bg-color-part2{
-    background: linear-gradient(0deg,  rgba(40, 190, 70, 0.4), rgba(40, 190, 70, 0.4));
+    background: linear-gradient(0deg, rgba(40, 190, 70, 0.4), rgba(40, 190, 70, 0.4));
     height: 100%;
     position: relative;
     color: white;
@@ -220,7 +220,7 @@ a{
 .part4-blocknum2{
     position: relative;
     background-color: rgb(54, 54, 54);
-    height: clamp(5rem, 17rem + 2vw, 16rem);
+    height: clamp(5rem, 17rem + 2vw, 20rem);
     top: clamp(1rem, 5rem + 2vw, 2rem);
     
 }
