@@ -13,30 +13,31 @@
     height: 80vh;
     text-align: center;
     font-family: 'Arial', sans-serif;
-    color: #333;
+
   }
   .welcome-container h1 {
     font-size: 2.5em;
     margin-bottom: 20px;
-    color: rgb(40, 190, 70);
+    color: var(--header-color);
   }
-  .welcome-container p {
+  .welcome-container p{
     font-size: 1.2em;
     margin-bottom: 10px;
+    color: var(--text-color);
   }
   .welcome-container {
     position: relative;
     margin-top: 30px;
     padding: 15px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     border-radius: 8px;
-    background-color: #f9f9f9;
+    background-color: var(--bg-color);
     width: 98%;
     height: 60%;
     max-width: 2000px;
     font-style: normal;
-    color: #555;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    color: var(--text-color);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
   }
 </style>
 {% endblock %}
@@ -49,7 +50,7 @@
         <p>Ваш персональный помощник в обучении и развитии.</p>
         <p>Здесь вы можете общаться с друзьями, управлять профилем и использовать AI-инструменты.</p>
         <p>
-          <a href="https://tpu.ru/" target="_blank">Официальный сайт ТПУ</a>
+          <a href="https://tpu.ru/" target="_blank" class="ssilka"><b>Официальный сайт ТПУ</b></a>
         </p>
       </div>
     </div>
@@ -64,6 +65,6 @@
 
 {% block scripts %}
   <script>
-    console.log("Добро пожаловать в AI Д-АИ Ассистент.");
+    console.log("Добро пожаловать в АИД Ассистент.");
   </script>
 {% endblock %}

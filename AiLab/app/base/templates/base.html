@@ -41,9 +41,6 @@
             {% endif %}
         </div>
         {% if current_endpoint == 'ide_blueprint.ide' %}
-        <div class="filetree-icon" data-user-id="{{ current_user.id }}" data-static-path="{{ url_for('static', filename='/../user_files/')}}">
-            <img src="{{ url_for('static', filename='img/icons/filetree.svg') }}" alt="filetree" class="icon-header">
-        </div>
         {% endif %}
 
         <div class="messenger-icon">

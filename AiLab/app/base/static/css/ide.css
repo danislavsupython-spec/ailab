@@ -20,6 +20,9 @@
     --set-active: #d0d0d0;
     --tabs: #ededed;
     --font-family:sans-serif;
+    --text-color:black;
+    --header-color:rgb(40,190,70);
+    --bg-color:rgb(242, 242, 242);
 }
 
 .dark-mode {
@@ -41,6 +44,9 @@
     --set-hover: #252525;
     --set-active: #1e1e1e;
     --tabs: #303030;
+    --text-color:white;
+    --header-color:white;
+    --bg-color:rgb(68, 68, 68);
 }
 
 /* Общие стили */
@@ -173,6 +179,7 @@ body {
     display: flex;
     justify-content: center;
 }
+
 
 /* Вкладки */
 
@@ -510,6 +517,15 @@ body {
     margin-top: 1.25vw;
     transition: 0.5s;
 }
+
+.ssilka {
+    color: var(--text-color)
+}
+
+.ssilka :hover {
+    color: rgb(118, 255, 175, 0.8)
+}
+
 .part1-el-item h3{
     margin: 1vw;
     font-size: 1vw;

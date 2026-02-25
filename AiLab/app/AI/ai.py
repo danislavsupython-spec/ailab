@@ -11,38 +11,22 @@ import re
 
 logger = logging.getLogger(__name__)
 
-
 MAX_HISTORY_MESSAGES = 10
 MODEL_NAME = "mistral:7b"
-
-
 
 class ChatHistoryManager:
     """Управляет историей чата с сохранением в файл."""
     
     def __init__(self, base_path: Path):
         self.base_path = base_path
+        self._smart_history = None
 
     def _load_storage(self, context_file: str) -> FileChatMessageHistory:
-        """
-        Загружает историю чата из файла.
-
-        Parameters
-        ----------
-        context_file : str
-            Путь к файлу истории чата
-
-        Returns
-        -------
-        FileChatMessageHistory
-            История чата с ограничением по сообщениям
-        """
         try:
             context_path = Path(context_file)
             context_path.parent.mkdir(parents=True, exist_ok=True)
             history = FileChatMessageHistory(file_path=str(context_path))
             
-            # Ограничиваем историю
             messages = history.messages
             if len(messages) > MAX_HISTORY_MESSAGES:
                 history.replace_messages(messages[-MAX_HISTORY_MESSAGES:])
@@ -58,18 +42,6 @@ class ChatHistoryManager:
         human_message: str, 
         ai_message: str
     ) -> None:
-        """
-        Сохраняет сообщения в историю чата.
-
-        Parameters
-        ----------
-        context_file : str
-            Путь к файлу истории
-        human_message : str
-            Сообщение пользователя
-        ai_message : str
-            Ответ AI
-        """
         try:
             history = self._load_storage(context_file)
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -80,7 +52,6 @@ class ChatHistoryManager:
         except Exception as e:
             logger.error("Ошибка сохранения в %s: %s", context_file, e)
 
-
 class WishManager:
     """Управляет пожеланиями пользователей и администраторов."""
     
@@ -89,37 +60,12 @@ class WishManager:
         self.global_wish_path = base_path / "context" / "admin_wish.json"
 
     def _ensure_wish_file(self, file_path: Path) -> Path:
-        """
-        Создает файл пожеланий если не существует.
-
-        Parameters
-        ----------
-        file_path : Path
-            Путь к файлу пожеланий
-
-        Returns
-        -------
-        Path
-            Путь к готовому файлу
-        """
         file_path.parent.mkdir(parents=True, exist_ok=True)
         if not file_path.exists():
             file_path.write_text("[]", encoding="utf-8")
         return file_path
 
     def add_user_wish(self, user_id: str, human_message: str, ai_message: str) -> None:
-        """
-        Добавляет пожелание пользователя.
-
-        Parameters
-        ----------
-        user_id : str
-            ID пользователя
-        human_message : str
-            Сообщение пользователя
-        ai_message : str
-            Ответ AI
-        """
         try:
             wish_file = self._ensure_wish_file(
                 self.base_path / "context" / user_id / "UserWish.json"
@@ -134,19 +80,6 @@ class WishManager:
             logger.error("Ошибка добавления пожелания %s: %s", user_id, e)
 
     def get_user_wishes(self, user_id: str) -> str:
-        """
-        Получает пожелания пользователя.
-
-        Parameters
-        ----------
-        user_id : str
-            ID пользователя
-
-        Returns
-        -------
-        str
-            Текст пожеланий или сообщение об отсутствии
-        """
         try:
             wish_file = self._ensure_wish_file(
                 self.base_path / "context" / user_id / "UserWish.json"
@@ -160,14 +93,6 @@ class WishManager:
             return ""
 
     def add_admin_wish(self, wish_message: str) -> None:
-        """
-        Добавляет глобальное пожелание администратора.
-
-        Parameters
-        ----------
-        wish_message : str
-            Текст пожелания
-        """
         try:
             self._ensure_wish_file(self.global_wish_path)
             data = json.loads(self.global_wish_path.read_text(encoding="utf-8"))
@@ -180,14 +105,6 @@ class WishManager:
             logger.error("Ошибка глобального пожелания: %s", e)
 
     def get_admin_wishes(self) -> str:
-        """
-        Получает глобальные пожелания.
-
-        Returns
-        -------
-        str
-            Текст пожеланий или пустая строка
-        """
         try:
             if not self.global_wish_path.exists():
                 return ""
@@ -199,9 +116,8 @@ class WishManager:
             logger.error("Ошибка глобальных пожеланий: %s", e)
             return ""
 
-
 class AI_BOT_V3:
-    """Основной класс AI бота с простой цепочкой."""
+    """AIД Ассистент ТПУ/ЛТПУ - помощник по всем предметам лицея."""
     
     def __init__(self):
         self.base_path = Path(USER_FILES_PATH)
@@ -211,14 +127,6 @@ class AI_BOT_V3:
         self._model: ChatOllama | None = None
 
     def _get_model(self) -> ChatOllama:
-        """
-        Создает и возвращает модель Ollama.
-
-        Returns
-        -------
-        ChatOllama
-            Инициализированная модель
-        """
         if self._model is None:
             self._model = ChatOllama(
                 model=MODEL_NAME,
@@ -237,32 +145,6 @@ class AI_BOT_V3:
         userid: str, 
         file_context: List[str] | None = None
     ) -> str:
-        """
-        Универсальный метод обработки запросов с приоритетами:
-        1. Расписание ТПУ → 2. Сохранение группы → 3. AI ответ
-        
-        Parameters
-        ----------
-        prompt : str
-            Текст запроса пользователя ("расписание", "привет")
-        context_path : str
-            Путь к истории чата ("data/user_12.json")
-        userid : str
-            Telegram/веб ID пользователя
-        file_context : List[str], optional
-            Список прикрепленных файлов
-        
-        Returns
-        -------
-        str
-            Готовый ответ для чата (HTML/Markdown)
-        
-        Raises
-        ------
-        Exception
-            Критические ошибки Ollama/парсера
-        """
-        # 1. Guard clause: нормализация входных данных
         if file_context is None:
             file_context = []
         
@@ -270,40 +152,71 @@ class AI_BOT_V3:
             logger.warning(f"Пустой запрос от {userid}")
             return "❓ Пожалуйста, напишите вопрос."
         
-        # 2. ПРОВЕРКА РАСПИСАНИЯ (ПРИОРИТЕТ №1)
+        # 1. РАСПИСАНИЕ ТПУ/ЛТПУ (ПРИОРИТЕТ №1)
         schedule_response = self._handle_schedule_request(prompt, userid)
         if schedule_response:
             logger.info(f"✅ Расписание для {userid}: {schedule_response[:50]}")
             return schedule_response
         
-        # 3. ПРОВЕРКА СОХРАНЕНИЯ ГРУППЫ (ПРИОРИТЕТ №2)
+        # 2. СОХРАНЕНИЕ ГРУППЫ ЛТПУ (ПРИОРИТЕТ №2)
         group_saved = self._handle_group_save(prompt, userid)
         if group_saved:
             return group_saved
         
-        # 4. AI ОТВЕТ (ПРИОРИТЕТ №3)
+        # 3. AI АСИСТЕНТ ТПУ/ЛТПУ (ПРИОРИТЕТ №3)
         try:
             ai_response = self._ai_response(prompt, context_path, userid, file_context)
-            logger.info(f"🤖 AI ответ для {userid} ({len(ai_response)} символов)")
+            logger.info(f"🤖 AIД Ассистент ТПУ для {userid} ({len(ai_response)} символов)")
             return ai_response
             
         except Exception as e:
             logger.error(f"❌ AI ошибка для {userid}: {e}")
             return (
-                "🤖 <b>AI временно недоступен</b>\n\n"
+                "<b>🤖 AIД Ассистент ТПУ временно недоступен</b>\n\n"
                 "• Проверьте `ollama serve`\n"
                 "• Скачайте `ollama pull mistral:7b`\n"
-                "• Или спросите расписание: <code>расписание</code>"
+                "• Спросите расписание: <code>расписание</code>"
             )
 
     def _ai_response(self, prompt: str, context_path: str, userid: str, file_context: List[str]) -> str:
-        """Ollama без langchain."""
+        """AIД Ассистент ТПУ/ЛТПУ - универсальная помощь по урокам."""
         try:
-            group_info = f"Группа: {self.user_groups.get(userid, 'не указана')}"
-            full_prompt = (
-                f"🧠 AI-помощник ТПУ\n{group_info}\nФайлы: {', '.join(file_context[:2])}\n\n"
-                f"Вопрос: {prompt}\n\nКРАТКО, русский, код в <code>"
-            )
+            # Определяем роль по предмету
+            role = self._detect_role(prompt)
+            
+            # Инфо о группе и файлах
+            group_info = f"Группа ЛТПУ: {self.user_groups.get(userid, 'не указана')}"
+            files_info = ', '.join(file_context[:2]) if file_context else 'нет'
+            
+            # ✅ ОСНОВНОЙ ПРОМПТ AIД АСИСТЕНТА ТПУ/ЛТПУ
+            full_prompt = f"""
+🎓 <b>AIД АСИСТЕНТ ТПУ | Лицей при ТПУ (ЛТПУ)</b>
+
+📚 <b>Ты ассистент учащихся ЛТПУ по ВСЕМ предметам:</b>
+• Математика, Физика, Информатика, Русский, Английский
+• Химия, Биология, История, Обществознание, География
+• Все профильные предметы лицея (программирование тоже!)
+
+{group_info}
+📎 Файлы: {files_info}
+
+<b>РОЛЬ:</b> {role}
+
+<b>ВОПРОС ЛИЦЕИСТА:</b> {prompt}
+
+---
+
+🎯 <b>ПРАВИЛА ОТВЕТА:</b>
+1. КРАТКО (3-5 предложений)
+2. ПО-ШКОЛЬНОМУ (просто, понятно)
+3. РУССКИЙ язык
+4. Формулы в LaTeX: $x^2$
+5. Код в <code>
+6. Задачи → решение + объяснение
+7. Если сложно → разбей на шаги
+
+<b>Ответь как учитель ЛТПУ:</b>
+"""
             
             response = ollama.chat(
                 model='mistral:7b',
@@ -312,29 +225,59 @@ class AI_BOT_V3:
             return response['message']['content']
         except Exception as e:
             logger.error(f"Ollama: {e}")
-            return "🤖 ollama serve + ollama pull mistral:7b"
+            return "🤖 Запусти: ollama serve && ollama pull mistral:7b"
+
+    def _detect_role(self, prompt: str) -> str:
+        """Определяет роль AIД Ассистента по предмету."""
+        prompt_lower = prompt.lower()
+        
+        # 🧮 МАТЕМАТИКА
+        math_keywords = {"математика", "уравнение", "функция", "производная", 
+                        "интеграл", "геометрия", "тригонометрия", "алгебра",
+                        "угол", "круг", "площадь", "объем", "матрица"}
+        
+        # ⚛️ ФИЗИКА
+        physics_keywords = {"физика", "сила", "ускорение", "скорость", "энергия",
+                           "импульс", "закон", "ньютон", "ом", "волна"}
+        
+        # 💻 ИНФОРМАТИКА
+        code_keywords = {"код", "python", "алгоритм", "цикл", "массив", 
+                        "функция", "класс", "переменная", "if", "for"}
+        
+        # 📖 ЯЗЫКИ
+        lang_keywords = {"английский", "переведи", "русский", "грамматика", 
+                        "слово", "предложение", "глагол", "существительное"}
+        
+        # 🧪 НАУКИ
+        science_keywords = {"химия", "биология", "атом", "молекула", "клетка", 
+                           "организм", "реакция", "элемент", "таблица менделеева"}
+        
+        # 📖 ГУМАНИТАРНЫЕ
+        humanities_keywords = {"история", "обществознание", "география", 
+                              "война", "дата", "страна", "конституция"}
+        
+        if any(kw in prompt_lower for kw in math_keywords):
+            return "УЧИТЕЛЬ МАТЕМАТИКИ ЛТПУ (алгебра, геометрия, анализ)"
+        elif any(kw in prompt_lower for kw in physics_keywords):
+            return "УЧИТЕЛЬ ФИЗИКИ ЛТПУ (механика, электричество, оптика)"
+        elif any(kw in prompt_lower for kw in code_keywords):
+            return "УЧИТЕЛЬ ИНФОРМАТИКИ ЛТПУ (Python, алгоритмы)"
+        elif any(kw in prompt_lower for kw in lang_keywords):
+            return "УЧИТЕЛЬ АНГЛИЙСКОГО/РУССКОГО ЛТПУ"
+        elif any(kw in prompt_lower for kw in science_keywords):
+            return "УЧИТЕЛЬ ХИМИИ/БИОЛОГИИ ЛТПУ"
+        elif any(kw in prompt_lower for kw in humanities_keywords):
+            return "УЧИТЕЛЬ ИСТОРИИ/ОБЩЕСТВОЗНАНИЯ ЛТПУ"
+        else:
+            return "УНИВЕРСАЛЬНЫЙ АСИСТЕНТ ЛТПУ (все предметы лицея)"
 
     def _handle_group_save(self, prompt: str, userid: str) -> str | None:
-        """
-        Автоматическое сохранение группы из сообщения.
-        
-        Parameters
-        ----------
-        prompt : str
-            Текст ("моя группа ИТ-21-1")
-        userid : str
-            ID пользователя
-            
-        Returns
-        -------
-        str | None
-            Подтверждение сохранения или None
-        """
-        # Паттерны для извлечения группы
+        """Сохранение группы ЛТПУ (415, 425, ИТ-21-1 и т.д.)."""
         patterns = [
-            r'(?:группа|group)[:\s]*([А-Яа-яЁё0-9\-]{3,20})',
+            r'(?:группа|group|гр|лтпу)[:\s]*([А-Яа-яЁё0-9\-]{3,20})',
             r'гр(?:уппа)?[:\s]*([А-Яа-яЁё0-9\-]{3,20})',
             r'([А-ЯЁ][А-Яа-яё]{2,4}\-\d{2}\-\d)',
+            r'(?:лтпу|лицей)[:\s]*([А-Яа-яЁё0-9\-]{3,20})',
         ]
         
         for pattern in patterns:
@@ -343,15 +286,16 @@ class AI_BOT_V3:
                 group_name = match.group(1).upper()
                 self.user_groups[userid] = group_name
                 
-                logger.info(f"✅ Сохранена группа '{group_name}' для {userid}")
-                return f"✅ <b>Группа {group_name} сохранена!</b>\n\nТеперь пишите <code>расписание</code>"
+                logger.info(f"✅ Сохранена группа ЛТПУ '{group_name}' для {userid}")
+                return f"✅ <b>Группа ЛТПУ {group_name} сохранена!</b>\n\n📅 Теперь: <code>расписание</code>\n🎓 Или спрашивай по предметам!"
         
         return None
 
     def _handle_schedule_request(self, prompt: str, userid: str) -> str | None:
-        """Расписание ТПУ - ПОЛНАЯ НЕДЕЛЯ."""
+        """Расписание ЛТПУ/ТПУ."""
         schedule_keywords = {
-            'расписание', 'расп', 'уроки', 'пары', 'schedule', 'завтра', 'сегодня'
+            'расписание', 'расп', 'уроки', 'пары', 'schedule', 
+            'завтра', 'сегодня', 'лтпу', 'лицей'
         }
         
         if not any(kw in prompt.lower() for kw in schedule_keywords):
@@ -362,175 +306,52 @@ class AI_BOT_V3:
             return (
                 "📚 <b>Укажите группу!</b>\n\n"
                 "💡 <code>моя группа 415</code>\n"
-                "📋 Группы: 415,425,435,445,455,314,324,334,344,354"
+                "📋 Группы: 415-А, 415-А, 425-А, 425-Б, 435-А, 435-Б, 445-А, 445-Б, 455-А, 455-Б, 324-А, 324-Б, 334-А, 334-Б, 344-А, 344-Б, 355-А, 355-Б"
             )
         
-        # ✅ ВЫВОДИМ ПОЛНОЕ РАСПИСАНИЕ НА НЕДЕЛЮ
         try:
             schedule_html = get_tpu_schedule(group_id)
-            return f"📅 <b>Полное расписание {group_id}</b>\n\n{schedule_html}"
+            return f"📅 <b>Расписание ЛТПУ {group_id}</b>\n\n{schedule_html}"
         except Exception as e:
             logger.error(f"Ошибка расписания {group_id}: {e}")
-            return f"❌ Ошибка загрузки <b>{group_id}</b>"
-    
+            return f"❌ Ошибка загрузки расписания <b>{group_id}</b>"
+
+    # Остальные методы без изменений...
     def set_user_group(self, userid: str, group_name: str) -> None:
-        """Сохраняет группу пользователя."""
         self.user_groups[userid] = group_name.strip()
         logger.info(f"Группа {group_name} сохранена для {userid}")
     
-    @staticmethod
-    def _parse_group_from_message(message: str) -> str | None:
-        """Извлекает название группы из сообщения."""
-        group_pattern = r'(?:группа|group)[:\s]*([А-Яа-яЁё0-9\-]+)'
-        match = re.search(group_pattern, message, re.IGNORECASE)
-        return match.group(1) if match else None
-
-    def _smart_history(
-        self, 
-        messages: List[Any], 
-        max_pairs: int = 8
-    ) -> List[Any]:
-        """
-        Обрезает историю до ключевых пар вопрос-ответ.
-
-        Parameters
-        ----------
-        messages : List[Any]
-            Полная история сообщений
-        max_pairs : int, optional
-            Максимум пар Q&A (по умолчанию 8)
-
-        Returns
-        -------
-        List[Any]
-            Оптимизированная история
-        """
-        # Берём только последние сообщения, попарно (вопрос+ответ)
-        recent_pairs = []
-        for i in range(0, len(messages), 2):
-            if len(recent_pairs) >= max_pairs:
-                break
-            if i + 1 < len(messages):
-                recent_pairs.extend(messages[i:i+2])
-        
-        # Финальный срез (не больше 10 сообщений)
-        return recent_pairs[-10:]
-
-
-    def _detect_role(self, prompt: str) -> str:
-        """
-        Определяет роль AI по ключевым словам.
-
-        Parameters
-        ----------
-        prompt : str
-            Текст запроса
-
-        Returns
-        -------
-        str
-            Роль AI ("программист", "DevOps", "помощник")
-        """
-        prompt_lower = prompt.lower()
-        
-        code_keywords = {"код", "python", "функция", "класс", "def", "pip"}
-        devops_keywords = {"установи", "docker", "linux", "pacman", "systemctl"}
-        
-        if any(kw in prompt_lower for kw in code_keywords):
-            return "эксперт Python 3.12 (SOLID, типизация, чистый код)"
-        elif any(kw in prompt_lower for kw in devops_keywords):
-            return "DevOps инженер Linux EndeavourOS"
-        else:
-            return "технический помощник программиста"
-
-
-    def _build_system_prompt(
-        self,
-        role: str,
-        user_id: str,
-        file_context: List[str],
-        user_wishes: str,
-        admin_wishes: str,
-        history_len: int
-    ) -> str:
-        """
-        Создаёт структурированный системный промпт.
-
-        Parameters
-        ----------
-        role : str
-            Роль AI
-        user_id : str
-            ID пользователя
-        file_context : List[str]
-            Файлы контекста
-        user_wishes : str
-            Пожелания пользователя
-        admin_wishes : str
-            Глобальные пожелания
-        history_len : int
-            Количество сообщений в истории
-
-        Returns
-        -------
-        str
-            Готовый системный промпт
-        """
-        files_str = ", ".join(file_context[:3])
-        if len(file_context) > 3:
-            files_str += "..."
-        
-        system_parts = [
-            f"🧠 Ты {role} для пользователя {user_id}",
-            f"📁 Контекст файлов: {files_str}",
-            f"💾 История: {history_len} сообщений",
-            "🎯 Правила ответа:",
-            "   • КРАТКО (3-5 предложений, макс 200 слов)",
-            "   • ТОЧНО по запросу",
-            "   • Русский язык",
-        ]
-        
-        if user_wishes:
-            system_parts.append(f"👤 Пожелания пользователя: {user_wishes}")
-        if admin_wishes:
-            system_parts.append(f"🌐 Глобальные правила: {admin_wishes}")
-        
-        return "\n".join(system_parts)
- 
     def add_user_wish(self, user_id: str, human_message: str, ai_message: str) -> None:
-        """Добавляет пожелание пользователя."""
         self.wish_manager.add_user_wish(user_id, human_message, ai_message)
     
     def add_admin_wish(self, wish_message: str) -> None:
-        """Добавляет глобальное пожелание."""
         self.wish_manager.add_admin_wish(wish_message)
+
 def get_tpu_schedule(group_id: str) -> str:
-    """✅ ПОЛНЫЕ расписания всех групп ТПУ (415-455)."""
+    """Расписания ЛТПУ/ТПУ."""
     group_id = group_id.upper().strip()
     
-    # Читаем data/rasp.json
     json_path = Path('AiLab/data/rasp.json')
     if not json_path.exists():
-        return "❌ <b>data/rasp.json</b> не найден"
+        return "❌ <b>AiLab/data/rasp.json</b> не найден"
     
     try:
         with json_path.open('r', encoding='utf-8') as f:
             schedules = json.load(f)
     except:
-        return "❌ Ошибка чтения data/rasp.json"
+        return "❌ Ошибка чтения rasp.json"
     
     if group_id not in schedules:
         groups = sorted([g for g in schedules.keys() if isinstance(g, str)])
         return f"""
-        ❌ <b>Группа {group_id}</b> не найдена!<br>
-        💡 Доступно: <code>{', '.join(groups[:5])}</code>
+        ❌ <b>Группа ЛТПУ {group_id}</b> не найдена!
+        💡 Доступно: <code>{', '.join(groups[:8])}</code>
         """
     
-    # ✅ КРАСИВАЯ HTML ТАБЛИЦА
     html = f"""
     <div class="schedule-container">
         <div class="schedule-header">
-            📅 <b>РАСПИСАНИЕ {group_id}</b> | 3 четверть 2025-2026
+            📅 <b>РАСПИСАНИЕ ЛТПУ {group_id}</b> | 3 четверть 2025-2026
         </div>
     """
     
@@ -544,16 +365,14 @@ def get_tpu_schedule(group_id: str) -> str:
         for lesson in lessons:
             lesson = lesson.strip()
             if not lesson or lesson in ["", "-", "—"]:
-                # ПУСТАЯ ячейка
                 html += """
                 <tr>
                     <td class="lesson-time">—</td>
-                    <td class="lesson-content">Окно</td>
+                    <td class="lesson-content">🆓 Окно</td>
                 </tr>
                 """
             else:
                 try:
-                    # ✅ ТВОЙ парсинг: "1. Предмет | кабинет"
                     num, content = lesson.split('. ', 1)
                     html += f"""
                     <tr>
@@ -562,7 +381,6 @@ def get_tpu_schedule(group_id: str) -> str:
                     </tr>
                     """
                 except ValueError:
-                    # Без номера
                     html += f"""
                     <tr>
                         <td class="lesson-time">—</td>
